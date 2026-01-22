@@ -19,7 +19,8 @@
       "Bash(venv/Scripts/python.exe:*)",
       "Bash(venv/Scripts/playwright.exe install:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nImprove text extraction from Threads reposts\n\nEnhanced the post parser to better extract actual post content instead\nof just author usernames:\n\n- Extract author info first, then use it to filter text content\n- Use multiple strategies to find post text \\(longest blocks, multi-word text\\)\n- Filter out author username and display name from content\n- Improved selectors with more comprehensive fallback options\n- Prioritize longer text blocks over short single-word text\n\nThis should fix the issue where only usernames were being extracted\ninstead of the actual repost content.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

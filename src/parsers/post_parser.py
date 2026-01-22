@@ -132,6 +132,15 @@ class PostParser:
                 continue
 
         logger.info(f"Parsed {len(reposts)} reposts ({errors} errors)")
+
+        # Log date range of scraped posts
+        if reposts:
+            dates = [r.timestamp for r in reposts if r.timestamp]
+            if dates:
+                oldest = min(dates)
+                newest = max(dates)
+                logger.info(f"Date range: {oldest.strftime('%Y-%m-%d')} to {newest.strftime('%Y-%m-%d')}")
+
         return reposts
 
     @staticmethod

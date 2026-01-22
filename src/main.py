@@ -95,6 +95,12 @@ Examples:
     )
 
     parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Enable debug mode with detailed logging and screenshots'
+    )
+
+    parser.add_argument(
         '--version',
         action='version',
         version='Threads Repost Scraper v1.0.0'
