@@ -4,7 +4,22 @@
       "WebSearch",
       "Bash(git init:*)",
       "Bash(git config:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Threads Repost Scraper\n\nComplete implementation of a Python-based web scraper for extracting\nrepost data from Threads and exporting to Markdown format.\n\nFeatures:\n- Browser automation using Playwright\n- 2FA authentication support with session persistence\n- Infinite scroll handling\n- Robust DOM parsing with fallback selectors\n- Markdown export with Obsidian integration\n- Comprehensive error handling and logging\n- CLI interface with argparse\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(gh:*)",
+      "Bash(python -m pip:*)",
+      "Bash(pip install:*)",
+      "Bash(pip index:*)",
+      "Bash(playwright install:*)",
+      "Bash(python:*)",
+      "Bash(where:*)",
+      "Bash(.venvScriptsactivate)",
+      "Bash(pip show:*)",
+      "Bash(.\\\\venv\\\\Scripts\\\\python.exe -m pip show:*)",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(venv/Scripts/playwright.exe install:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nImprove text extraction from Threads reposts\n\nEnhanced the post parser to better extract actual post content instead\nof just author usernames:\n\n- Extract author info first, then use it to filter text content\n- Use multiple strategies to find post text \\(longest blocks, multi-word text\\)\n- Filter out author username and display name from content\n- Improved selectors with more comprehensive fallback options\n- Prioritize longer text blocks over short single-word text\n\nThis should fix the issue where only usernames were being extracted\ninstead of the actual repost content.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -152,7 +152,22 @@ async def main_async():
         logger.info("Starting scraping process")
         result = await scraper.run()
 
-        # Export to markdown
+        # Check if there are new posts to export
+        if result.new_count == 0 and result.duplicate_count > 0:
+            # No new posts, all were duplicates
+            print("\n" + "="*60)
+            print("SCRAPING COMPLETE")
+            print("="*60)
+            print(f"Total reposts found: {result.duplicate_count}")
+            print(f"New posts: 0")
+            print(f"Duplicates (already scraped): {result.duplicate_count}")
+            print(f"\n✓ All posts were already scraped previously.")
+            print("No new markdown file created.")
+            print("="*60 + "\n")
+            logger.info("No new posts to export")
+            return 0
+
+        # Export to markdown (only new posts)
         logger.info("Exporting results to markdown")
         exporter = MarkdownExporter(config.output_dir)
         output_file = exporter.export(result)
@@ -161,7 +176,10 @@ async def main_async():
         print("\n" + "="*60)
         print("SCRAPING COMPLETE")
         print("="*60)
-        print(f"Total reposts found: {result.total_count}")
+        print(f"Total reposts found: {result.total_count + result.duplicate_count}")
+        print(f"New posts: {result.new_count}")
+        if result.duplicate_count > 0:
+            print(f"Duplicates (skipped): {result.duplicate_count}")
         print(f"Successfully parsed: {result.success_count}")
         print(f"Failed/Deleted: {result.failed_count}")
         print(f"\nMarkdown file created: {output_file}")

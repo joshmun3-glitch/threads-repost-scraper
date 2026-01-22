@@ -150,7 +150,9 @@ class BrowserManager:
         # Use Playwright's default user agent
         if self.browser:
             context = await self.browser.new_context()
-            user_agent = await context.evaluate('navigator.userAgent')
+            page = await context.new_page()
+            user_agent = await page.evaluate('navigator.userAgent')
+            await page.close()
             await context.close()
             return user_agent
 

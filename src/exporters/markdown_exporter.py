@@ -118,7 +118,9 @@ class MarkdownExporter:
             total_count=result.total_count,
             scrape_date=scrape_date,
             success_count=result.success_count,
-            failed_count=result.failed_count
+            failed_count=result.failed_count,
+            new_count=result.new_count,
+            duplicate_count=result.duplicate_count
         )
         sections.append(frontmatter)
 
@@ -130,8 +132,8 @@ class MarkdownExporter:
         )
         sections.append(header)
 
-        # 3. Summary section (if there are errors)
-        if result.errors:
+        # 3. Summary section (if there are errors or duplicates)
+        if result.errors or result.duplicate_count > 0:
             summary = self._generate_summary_section(result)
             sections.append(summary)
 
@@ -150,11 +152,18 @@ class MarkdownExporter:
         lines = [
             "## Summary",
             "",
-            f"- **Total reposts found**: {result.total_count}",
+            f"- **New reposts in this file**: {result.total_count}",
             f"- **Successfully parsed**: {result.success_count}",
             f"- **Failed/Deleted**: {result.failed_count}",
-            ""
         ]
+
+        # Add duplicate info if any
+        if result.duplicate_count > 0:
+            lines.append(f"- **Duplicates (skipped)**: {result.duplicate_count}")
+            lines.append("")
+            lines.append(f"_Note: {result.duplicate_count} repost(s) were already scraped in previous runs and excluded from this file._")
+
+        lines.append("")
 
         if result.errors:
             lines.append("### Errors Encountered")

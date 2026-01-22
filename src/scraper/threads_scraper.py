@@ -11,6 +11,7 @@ from ..parsers.post_parser import PostParser, RepostData
 from ..utils.config import ScraperConfig, BrowserConfig, ScraperResult
 from ..utils.logger import setup_logger
 from ..utils.exceptions import NavigationError, ParsingError
+from ..utils.deduplication import DeduplicationManager
 
 
 class ThreadsScraper:
@@ -49,6 +50,15 @@ class ThreadsScraper:
 
         reposts = []
         errors = []
+        duplicate_count = 0
+        new_count = 0
+
+        # Initialize deduplication manager
+        dedup_manager = DeduplicationManager(self.config.output_dir)
+        existing_urls = dedup_manager.load_existing_posts(self.config.username)
+
+        if existing_urls:
+            self.logger.info(f"Will skip {len(existing_urls)} already scraped posts")
 
         try:
             # 1. Launch browser
@@ -94,14 +104,22 @@ class ThreadsScraper:
 
             # 7. Parse all reposts from the page
             self.logger.info("Parsing reposts")
-            reposts = await PostParser.parse_page_reposts(page)
+            all_reposts = await PostParser.parse_page_reposts(page)
 
-            # 8. Apply max_posts limit if specified
+            # 8. Filter out duplicates
+            self.logger.info("Filtering duplicates")
+            new_reposts, duplicate_reposts = dedup_manager.filter_duplicates(all_reposts)
+            reposts = new_reposts
+            duplicate_count = len(duplicate_reposts)
+            new_count = len(new_reposts)
+
+            # 9. Apply max_posts limit if specified (only to new posts)
             if self.config.max_posts and len(reposts) > self.config.max_posts:
-                self.logger.info(f"Limiting to {self.config.max_posts} posts")
+                self.logger.info(f"Limiting to {self.config.max_posts} new posts")
                 reposts = reposts[:self.config.max_posts]
+                new_count = len(reposts)
 
-            # 9. Close page
+            # 10. Close page
             await page.close()
 
         except Exception as e:
@@ -110,7 +128,7 @@ class ThreadsScraper:
             raise
 
         finally:
-            # 10. Cleanup
+            # 11. Cleanup
             await self.browser_manager.close()
             self.logger.info("Browser closed")
 
@@ -122,7 +140,9 @@ class ThreadsScraper:
             total_count=len(reposts),
             success_count=success_count,
             scrape_timestamp=datetime.now().isoformat(),
-            errors=errors
+            errors=errors,
+            duplicate_count=duplicate_count,
+            new_count=new_count
         )
 
         self.logger.info(

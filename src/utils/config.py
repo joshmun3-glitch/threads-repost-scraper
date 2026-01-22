@@ -98,6 +98,8 @@ class ScraperResult:
     success_count: int
     scrape_timestamp: str
     errors: list = field(default_factory=list)
+    duplicate_count: int = 0
+    new_count: int = 0
 
     @property
     def failed_count(self) -> int:
