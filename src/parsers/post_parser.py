@@ -50,8 +50,12 @@ class PostParser:
             ParsingError: If critical data cannot be extracted
         """
         try:
-            # Extract text content
-            text = await PostParser._extract_text(element)
+            # Extract author information FIRST
+            author_username = await PostParser._extract_author_username(element)
+            author_name = await PostParser._extract_author_name(element)
+
+            # Extract text content (now we can filter out author info)
+            text = await PostParser._extract_text(element, author_username, author_name)
 
             # Check if post is deleted or unavailable
             if PostParser._is_deleted(text):
@@ -64,10 +68,6 @@ class PostParser:
                     post_url="",
                     is_deleted=True
                 )
-
-            # Extract author information
-            author_username = await PostParser._extract_author_username(element)
-            author_name = await PostParser._extract_author_name(element)
 
             # Extract timestamp
             timestamp, raw_timestamp = await PostParser._extract_timestamp(element)
@@ -135,21 +135,108 @@ class PostParser:
         return reposts
 
     @staticmethod
-    async def _extract_text(element: ElementHandle) -> str:
-        """Extract text content from post element."""
+    async def _extract_text(
+        element: ElementHandle,
+        author_username: Optional[str] = None,
+        author_name: Optional[str] = None
+    ) -> str:
+        """
+        Extract text content from post element.
+
+        Args:
+            element: The post element
+            author_username: Author username to filter out
+            author_name: Author name to filter out
+
+        Returns:
+            Extracted text content
+        """
+        # Strategy 1: Try multiple selectors and filter out username-only content
+        potential_texts = []
+
         for selector in SELECTORS.POST_TEXT:
             try:
-                text_element = await element.query_selector(selector)
-                if text_element:
+                text_elements = await element.query_selector_all(selector)
+                for text_element in text_elements:
                     text = await text_element.inner_text()
                     if text and text.strip():
-                        return text.strip()
+                        text = text.strip()
+                        # Filter out the author username and name
+                        if author_username and text.lower() == author_username.lower():
+                            continue
+                        if author_name and text.lower() == author_name.lower():
+                            continue
+                        # Filter out @username format
+                        if author_username and text.lower() == f"@{author_username}".lower():
+                            continue
+                        # Filter out very short text (likely usernames)
+                        if len(text) > 3:
+                            potential_texts.append(text)
             except Exception:
                 continue
 
-        # Fallback: get all text from element
+        # Strategy 2: Look for the longest text block (likely the post content)
+        if potential_texts:
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_texts = []
+            for text in potential_texts:
+                if text not in seen:
+                    seen.add(text)
+                    unique_texts.append(text)
+
+            # Find the longest text that's not just a username
+            # (usernames are typically short, < 30 chars)
+            for text in sorted(unique_texts, key=len, reverse=True):
+                # Skip if it matches author info
+                if author_username and text.lower() == author_username.lower():
+                    continue
+                if author_name and text.lower() == author_name.lower():
+                    continue
+
+                # Skip if it's just a single word (likely username)
+                if ' ' in text or len(text) > 30:
+                    return text
+                # If it contains newlines, it's likely real content
+                if '\n' in text:
+                    return text
+
+            # If no multi-word text found, return the longest one
+            if unique_texts:
+                longest = max(unique_texts, key=len)
+                # Make sure it's not just the username
+                if author_username and longest.lower() != author_username.lower():
+                    return longest
+                if not author_username:
+                    return longest
+
+        # Strategy 3: Get all text and try to extract meaningful content
         try:
-            return (await element.inner_text()).strip()
+            full_text = await element.inner_text()
+            lines = [line.strip() for line in full_text.split('\n') if line.strip()]
+
+            # Filter out author info lines
+            filtered_lines = []
+            for line in lines:
+                if author_username and line.lower() == author_username.lower():
+                    continue
+                if author_name and line.lower() == author_name.lower():
+                    continue
+                if author_username and line.lower() == f"@{author_username}".lower():
+                    continue
+                filtered_lines.append(line)
+
+            # Look for lines that are longer than typical usernames
+            content_lines = [line for line in filtered_lines if len(line) > 30 or ' ' in line]
+            if content_lines:
+                return '\n'.join(content_lines)
+
+            # If nothing found but we have filtered lines, return them
+            if filtered_lines:
+                return '\n'.join(filtered_lines)
+
+            # Last resort: return the full text
+            return full_text.strip()
         except Exception:
             return ""
 

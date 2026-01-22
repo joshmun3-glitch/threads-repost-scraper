@@ -54,11 +54,27 @@ class ThreadsSelectors:
         ]
 
         # Text content - look for text containers
+        # Try multiple strategies to find the actual post content
         self.POST_TEXT = [
-            'div[dir="auto"] span',
+            # Strategy 1: Direct text containers with dir attribute
+            'div[dir="auto"]:not([role="button"])',
+            'span[dir="auto"]:not([role="button"])',
+
+            # Strategy 2: Look within the article/post container
+            'article div[dir="auto"]',
+            'article span',
+
+            # Strategy 3: Text content divs (common patterns)
+            'div[style*="text"] span',
+            'div[class*="text"] span',
+
+            # Strategy 4: Any div with auto direction (common for text content)
             'div[dir="auto"]',
             'span[dir="auto"]',
-            'div.x1lliihq',  # Common text container class (may change)
+
+            # Strategy 5: Fallback to any span elements
+            'span',
+            'div',
         ]
 
         # Author username - typically in links starting with /@
