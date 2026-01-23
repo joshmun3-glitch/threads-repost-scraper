@@ -77,7 +77,8 @@ class ThreadsScraper:
             self.logger.info(f"Navigating to: {reposts_url}")
 
             try:
-                response = await page.goto(reposts_url, wait_until='networkidle', timeout=30000)
+                # Use 'load' instead of 'networkidle' to avoid timeout on continuous network activity
+                response = await page.goto(reposts_url, wait_until='load', timeout=60000)
 
                 if not response or response.status >= 400:
                     raise NavigationError(f"Failed to load page: HTTP {response.status if response else 'No response'}")

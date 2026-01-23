@@ -82,7 +82,7 @@ class AuthHandler:
 
             # Navigate to login page
             logger.info(f"Navigating to {self.LOGIN_URL}")
-            await page.goto(self.LOGIN_URL, wait_until='networkidle')
+            await page.goto(self.LOGIN_URL, wait_until='load', timeout=60000)
 
             # Instructions for user
             print("\n" + "="*60)
@@ -132,7 +132,7 @@ class AuthHandler:
 
             # Navigate to Threads home page
             logger.debug("Verifying authentication status")
-            response = await page.goto("https://www.threads.net/", wait_until='networkidle', timeout=15000)
+            response = await page.goto("https://www.threads.net/", wait_until='load', timeout=30000)
 
             # Check if we're redirected to login (indicates not authenticated)
             current_url = page.url
