@@ -95,11 +95,16 @@ class ThreadsScraper:
                 raise NavigationError("Redirected to login page - session may be invalid")
 
             # 5. Wait for initial content to load
-            self.logger.info("Waiting for content to load")
-            await page.wait_for_timeout(8000)  # Wait 8 seconds for initial load
+            self.logger.info("Waiting for initial content to load...")
+            await page.wait_for_timeout(10000)  # Wait 10 seconds for initial load
 
             # Try a small scroll to trigger lazy loading
+            self.logger.info("Pre-scroll to trigger lazy loading...")
             await page.evaluate("window.scrollBy(0, 500)")
+            await page.wait_for_timeout(3000)  # Wait 3 more seconds
+
+            # Scroll back to top
+            await page.evaluate("window.scrollTo(0, 0)")
             await page.wait_for_timeout(2000)  # Wait 2 more seconds
 
             # 6. Perform infinite scroll

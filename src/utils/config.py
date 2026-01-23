@@ -18,8 +18,8 @@ class ScraperConfig:
     output_dir: Path = field(default_factory=lambda: Path("output"))
     session_file: Path = field(default_factory=lambda: Path("session.json"))
     headless: bool = True
-    scroll_wait_time: int = 4  # Increased from 2 to load more content
-    max_retries: int = 10  # Increased from 3 to be more aggressive
+    scroll_wait_time: int = 6  # Increased to 6 to give Threads more time to load
+    max_retries: int = 15  # Increased to 15 to be more persistent
     max_posts: Optional[int] = None
     log_level: str = "INFO"
     skip_dedup: bool = False  # Skip deduplication checking

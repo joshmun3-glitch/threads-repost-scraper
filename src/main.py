@@ -68,15 +68,15 @@ Examples:
     parser.add_argument(
         '--wait-time',
         type=int,
-        default=4,
-        help='Seconds to wait between scrolls (default: 4)'
+        default=6,
+        help='Seconds to wait between scrolls (default: 6)'
     )
 
     parser.add_argument(
         '--max-retries',
         type=int,
-        default=10,
-        help='Number of scroll retries before stopping (default: 10)'
+        default=15,
+        help='Number of scroll retries before stopping (default: 15)'
     )
 
     parser.add_argument(

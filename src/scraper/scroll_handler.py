@@ -69,8 +69,29 @@ class ScrollHandler:
 
             logger.info(f"Scroll #{scroll_count}: height={current_height}, posts={current_post_count}")
 
-            # Wait for content to load
+            # Wait for content to load with progressive checking
+            logger.debug("Waiting for new content to load...")
+
+            # Initial wait
             await asyncio.sleep(wait_time)
+
+            # Check if loading indicator is present (Threads shows loading state)
+            for check in range(3):  # Check up to 3 times
+                try:
+                    # Check if post count increased
+                    check_count = await page.evaluate("""
+                        () => document.querySelectorAll('div[data-pressable-container="true"]').length
+                    """)
+
+                    if check_count > current_post_count:
+                        logger.info(f"📦 Content loading... ({check_count} posts now)")
+                        # More content appeared, wait a bit more for it to finish
+                        await asyncio.sleep(2)
+                    else:
+                        # No new content yet, wait and check again
+                        await asyncio.sleep(1)
+                except Exception:
+                    await asyncio.sleep(1)
 
             # Get new metrics AFTER scrolling
             new_height = await page.evaluate("document.body.scrollHeight")
