@@ -178,7 +178,13 @@ class MarkdownFormatter:
         # Header with date and author
         date_str = MarkdownFormatter.format_date_header(repost.timestamp)
         wikilink = MarkdownFormatter.create_wikilink(repost.author_username)
-        lines.append(f"## {date_str} | {wikilink}")
+
+        # Add thread indicator if applicable
+        thread_indicator = ""
+        if repost.is_thread and repost.thread_post_count > 1:
+            thread_indicator = f" 🧵 [Thread: {repost.thread_post_count} posts]"
+
+        lines.append(f"## {date_str} | {wikilink}{thread_indicator}")
         lines.append("")
 
         # Quote block with text content

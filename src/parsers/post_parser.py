@@ -7,6 +7,7 @@ from playwright.async_api import ElementHandle, Page
 from dateutil import parser as date_parser
 
 from .selectors import SELECTORS
+from .thread_expander import ThreadExpander
 from ..utils.logger import get_logger
 from ..utils.exceptions import ParsingError
 
@@ -26,22 +27,31 @@ class RepostData:
     is_deleted: bool = False
     is_private: bool = False
     raw_timestamp: Optional[str] = None
+    is_thread: bool = False
+    thread_post_count: int = 1
 
     def __str__(self):
         """String representation."""
-        return f"@{self.author_username}: {self.text[:50]}..."
+        thread_info = f" [{self.thread_post_count} posts]" if self.is_thread else ""
+        return f"@{self.author_username}{thread_info}: {self.text[:50]}..."
 
 
 class PostParser:
     """Parser for extracting data from Threads post elements."""
 
     @staticmethod
-    async def parse_post_element(element: ElementHandle) -> Optional[RepostData]:
+    async def parse_post_element(
+        element: ElementHandle,
+        page: Optional[Page] = None,
+        expand_threads: bool = True
+    ) -> Optional[RepostData]:
         """
         Parse a single post element to extract repost data.
 
         Args:
             element: Playwright ElementHandle for the post
+            page: Optional Page instance for thread expansion
+            expand_threads: Whether to expand multi-post threads
 
         Returns:
             RepostData object or None if parsing fails
@@ -56,6 +66,31 @@ class PostParser:
 
             # Extract text content (now we can filter out author info)
             text = await PostParser._extract_text(element, author_username, author_name)
+
+            # Check if this is a multi-post thread
+            is_thread = False
+            thread_post_count = 1
+
+            if expand_threads and page:
+                is_thread = await ThreadExpander.is_thread(element)
+
+                if is_thread:
+                    logger.info(f"Detected thread post by @{author_username}")
+                    # Get the post URL first
+                    post_url = await PostParser._extract_post_url(element)
+
+                    if post_url:
+                        # Expand the thread to get all posts
+                        thread_posts = await ThreadExpander.expand_thread(page, post_url, author_username)
+
+                        if len(thread_posts) > 1:
+                            # Format as a complete thread
+                            text = ThreadExpander.format_thread_content(thread_posts)
+                            thread_post_count = len(thread_posts)
+                            logger.info(f"Expanded thread with {thread_post_count} posts")
+                        elif len(thread_posts) == 1:
+                            # Use the expanded content (might be cleaner)
+                            text = thread_posts[0]
 
             # Check if post is deleted or unavailable
             if PostParser._is_deleted(text):
@@ -72,8 +107,9 @@ class PostParser:
             # Extract timestamp
             timestamp, raw_timestamp = await PostParser._extract_timestamp(element)
 
-            # Extract post URL
-            post_url = await PostParser._extract_post_url(element)
+            # Extract post URL (if not already extracted for thread expansion)
+            if not is_thread or not post_url:
+                post_url = await PostParser._extract_post_url(element)
 
             # Create RepostData object
             repost = RepostData(
@@ -82,7 +118,9 @@ class PostParser:
                 author_name=author_name or "Unknown",
                 timestamp=timestamp,
                 post_url=post_url or "",
-                raw_timestamp=raw_timestamp
+                raw_timestamp=raw_timestamp,
+                is_thread=is_thread,
+                thread_post_count=thread_post_count
             )
 
             logger.debug(f"Parsed repost: @{repost.author_username}")
@@ -117,7 +155,7 @@ class PostParser:
 
                     for i, element in enumerate(elements):
                         try:
-                            repost = await PostParser.parse_post_element(element)
+                            repost = await PostParser.parse_post_element(element, page=page, expand_threads=True)
                             if repost:
                                 reposts.append(repost)
                         except ParsingError as e:
