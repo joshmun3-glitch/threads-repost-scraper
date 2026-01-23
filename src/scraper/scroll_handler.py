@@ -51,8 +51,20 @@ class ScrollHandler:
                 () => document.querySelectorAll('div[data-pressable-container="true"]').length
             """)
 
-            # Scroll to bottom
+            # Scroll to bottom using multiple methods to trigger lazy loading
+            await page.evaluate("""
+                // Method 1: Smooth scroll to bottom
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            """)
+            await asyncio.sleep(0.5)
+
+            # Method 2: Instant scroll to bottom
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await asyncio.sleep(0.5)
+
+            # Method 3: Scroll by large amount
+            await page.evaluate("window.scrollBy(0, 5000)")
+
             scroll_count += 1
 
             logger.info(f"Scroll #{scroll_count}: height={current_height}, posts={current_post_count}")

@@ -96,7 +96,11 @@ class ThreadsScraper:
 
             # 5. Wait for initial content to load
             self.logger.info("Waiting for content to load")
-            await page.wait_for_timeout(5000)  # Wait 5 seconds for initial load
+            await page.wait_for_timeout(8000)  # Wait 8 seconds for initial load
+
+            # Try a small scroll to trigger lazy loading
+            await page.evaluate("window.scrollBy(0, 500)")
+            await page.wait_for_timeout(2000)  # Wait 2 more seconds
 
             # 6. Perform infinite scroll
             self.logger.info("Starting infinite scroll")
