@@ -40,12 +40,30 @@ class ThreadExpander:
                     logger.debug(f"Found thread indicator: {indicator}")
                     return True
 
+            # Check for truncated text indicators (suggests more content)
+            truncation_indicators = [
+                '...',  # Ellipsis
+            ]
+
+            text_stripped = text.strip()
+            for indicator in truncation_indicators:
+                if text_stripped.endswith(indicator):
+                    logger.debug(f"Found truncation indicator: {indicator}")
+                    return True
+
+            # Check if text ends abruptly (with colon, suggesting continuation)
+            # But only if the text is reasonably long (> 200 chars)
+            if len(text_stripped) > 200 and text_stripped.endswith(':'):
+                logger.debug("Text ends with colon and is long - likely truncated thread")
+                return True
+
             # Check if there's a "View post" or "Show thread" type link
             # (Threads often has these for multi-post content)
             links = await element.query_selector_all('a')
             for link in links:
                 link_text = await link.inner_text()
-                if any(phrase in link_text.lower() for phrase in ['view', 'thread', 'more']):
+                if any(phrase in link_text.lower() for phrase in ['view', 'thread', 'more', 'see more', 'show more']):
+                    logger.debug(f"Found 'more' link: {link_text}")
                     return True
 
             return False
@@ -70,41 +88,55 @@ class ThreadExpander:
         thread_posts = []
 
         try:
-            logger.info(f"Expanding thread: {post_url}")
+            logger.info(f"🔍 Expanding thread: {post_url}")
 
             # Navigate to the full post page
             full_url = f"https://www.threads.net{post_url}" if post_url.startswith('/') else post_url
+            logger.debug(f"Thread URL: {full_url}")
 
             # Create a new page for thread expansion (to avoid affecting main scraping)
             thread_page = await page.context.new_page()
 
             try:
+                logger.debug(f"Navigating to thread page...")
                 await thread_page.goto(full_url, wait_until='load', timeout=30000)
-                await thread_page.wait_for_timeout(2000)  # Wait for content to load
+                logger.debug(f"Page loaded, waiting for content...")
+                await thread_page.wait_for_timeout(3000)  # Wait for content to load (increased from 2s)
 
                 # Find all post containers on the thread page
                 containers = await thread_page.query_selector_all('div[data-pressable-container="true"]')
-                logger.debug(f"Found {len(containers)} containers in thread")
+                logger.info(f"📦 Found {len(containers)} containers in thread page")
 
-                for container in containers:
+                author_post_count = 0
+                for i, container in enumerate(containers):
                     # Check if this post is by the original author
                     is_by_author = await ThreadExpander._is_by_author(container, author_username)
+                    logger.debug(f"Container {i+1}: by_author={is_by_author}")
 
                     if is_by_author:
+                        author_post_count += 1
                         # Extract text from this post
                         text = await ThreadExpander._extract_thread_post_text(container, author_username)
+                        logger.debug(f"Extracted text length: {len(text) if text else 0}")
+
                         if text and len(text) > 10:  # Only add substantial content
                             thread_posts.append(text)
-                            logger.debug(f"Added thread post: {text[:50]}...")
+                            logger.info(f"✅ Added thread post #{len(thread_posts)}: {text[:50]}...")
+                        else:
+                            logger.debug(f"Skipped container {i+1}: text too short or empty")
+
+                logger.info(f"📊 Found {author_post_count} posts by @{author_username} in thread")
 
             finally:
                 await thread_page.close()
 
-            logger.info(f"Extracted {len(thread_posts)} posts from thread")
+            logger.info(f"✅ Extracted {len(thread_posts)} posts from thread")
             return thread_posts
 
         except Exception as e:
-            logger.warning(f"Error expanding thread: {e}")
+            logger.warning(f"❌ Error expanding thread: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             return thread_posts  # Return what we got so far
 
     @staticmethod

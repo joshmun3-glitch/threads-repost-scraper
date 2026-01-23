@@ -70,16 +70,18 @@ class PostParser:
             # Check if this is a multi-post thread
             is_thread = False
             thread_post_count = 1
+            post_url = None
 
             if expand_threads and page:
                 is_thread = await ThreadExpander.is_thread(element)
 
                 if is_thread:
-                    logger.info(f"Detected thread post by @{author_username}")
+                    logger.info(f"🧵 Detected thread post by @{author_username}")
                     # Get the post URL first
                     post_url = await PostParser._extract_post_url(element)
 
                     if post_url:
+                        logger.info(f"🧵 Expanding thread from URL: {post_url}")
                         # Expand the thread to get all posts
                         thread_posts = await ThreadExpander.expand_thread(page, post_url, author_username)
 
@@ -87,10 +89,15 @@ class PostParser:
                             # Format as a complete thread
                             text = ThreadExpander.format_thread_content(thread_posts)
                             thread_post_count = len(thread_posts)
-                            logger.info(f"Expanded thread with {thread_post_count} posts")
+                            logger.info(f"✅ Expanded thread with {thread_post_count} posts")
                         elif len(thread_posts) == 1:
                             # Use the expanded content (might be cleaner)
                             text = thread_posts[0]
+                            logger.info(f"ℹ️  Thread had only 1 post, using expanded content")
+                        else:
+                            logger.warning(f"⚠️  Thread expansion returned no posts, using original text")
+                    else:
+                        logger.warning(f"⚠️  Could not extract post URL for thread expansion")
 
             # Check if post is deleted or unavailable
             if PostParser._is_deleted(text):

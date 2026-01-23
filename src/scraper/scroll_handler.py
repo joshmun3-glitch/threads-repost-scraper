@@ -56,15 +56,17 @@ class ScrollHandler:
             # Wait for content to load
             await asyncio.sleep(wait_time)
 
-            # Wait for any network activity to settle
-            try:
-                await page.wait_for_load_state('networkidle', timeout=wait_time * 1000)
-            except Exception:
-                # Timeout is okay, continue anyway
-                pass
-
             # Get new height
             new_height = await page.evaluate("document.body.scrollHeight")
+
+            # Also count visible post elements to better detect new content
+            try:
+                post_count = await page.evaluate("""
+                    () => document.querySelectorAll('div[data-pressable-container="true"]').length
+                """)
+                logger.debug(f"Visible posts: {post_count}")
+            except Exception:
+                pass
 
             # Check if height changed
             if new_height == current_height:
