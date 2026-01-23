@@ -160,93 +160,78 @@ class PostParser:
         Returns:
             Extracted text content
         """
-        # Strategy 1: Try multiple selectors and filter out username-only content
-        potential_texts = []
+        # NEW STRATEGY: For div[data-pressable-container="true"] structure
+        # The full post text is best found by getting innerText and filtering out metadata
 
-        for selector in SELECTORS.POST_TEXT:
-            try:
-                text_elements = await element.query_selector_all(selector)
-                for text_element in text_elements:
-                    text = await text_element.inner_text()
-                    if text and text.strip():
-                        text = text.strip()
-                        # Filter out the author username and name
-                        if author_username and text.lower() == author_username.lower():
-                            continue
-                        if author_name and text.lower() == author_name.lower():
-                            continue
-                        # Filter out @username format
-                        if author_username and text.lower() == f"@{author_username}".lower():
-                            continue
-                        # Filter out very short text (likely usernames)
-                        if len(text) > 3:
-                            potential_texts.append(text)
-            except Exception:
-                continue
-
-        # Strategy 2: Look for the longest text block (likely the post content)
-        if potential_texts:
-            # Remove duplicates while preserving order
-            seen = set()
-            unique_texts = []
-            for text in potential_texts:
-                if text not in seen:
-                    seen.add(text)
-                    unique_texts.append(text)
-
-            # Find the longest text that's not just a username
-            # (usernames are typically short, < 30 chars)
-            for text in sorted(unique_texts, key=len, reverse=True):
-                # Skip if it matches author info
-                if author_username and text.lower() == author_username.lower():
-                    continue
-                if author_name and text.lower() == author_name.lower():
-                    continue
-
-                # Skip if it's just a single word (likely username)
-                if ' ' in text or len(text) > 30:
-                    return text
-                # If it contains newlines, it's likely real content
-                if '\n' in text:
-                    return text
-
-            # If no multi-word text found, return the longest one
-            if unique_texts:
-                longest = max(unique_texts, key=len)
-                # Make sure it's not just the username
-                if author_username and longest.lower() != author_username.lower():
-                    return longest
-                if not author_username:
-                    return longest
-
-        # Strategy 3: Get all text and try to extract meaningful content
         try:
+            # Get all text from the container
             full_text = await element.inner_text()
             lines = [line.strip() for line in full_text.split('\n') if line.strip()]
 
-            # Filter out author info lines
+            # Filter out common metadata patterns
             filtered_lines = []
+            skip_patterns = [
+                author_username,
+                author_name,
+                'econ threads',  # hashtag
+                '번역하기',  # translate button
+            ]
+
             for line in lines:
+                # Skip author info
                 if author_username and line.lower() == author_username.lower():
                     continue
                 if author_name and line.lower() == author_name.lower():
                     continue
-                if author_username and line.lower() == f"@{author_username}".lower():
+
+                # Skip short single-word lines that are likely UI elements
+                if len(line) < 3:
                     continue
+
+                # Skip lines that are just numbers (likes, shares, etc)
+                if line.isdigit():
+                    continue
+
+                # Skip time-related text like "17시간", "19시간"
+                if line.endswith('시간') and len(line) < 10:
+                    continue
+
+                # Skip hashtags alone
+                if line.startswith('#') and ' ' not in line:
+                    continue
+
+                # Keep substantial lines
                 filtered_lines.append(line)
 
-            # Look for lines that are longer than typical usernames
-            content_lines = [line for line in filtered_lines if len(line) > 30 or ' ' in line]
-            if content_lines:
-                return '\n'.join(content_lines)
+            # Join the filtered content
+            if filtered_lines:
+                # Remove the first line if it's just the username
+                if filtered_lines and author_username and filtered_lines[0].lower() == author_username.lower():
+                    filtered_lines = filtered_lines[1:]
 
-            # If nothing found but we have filtered lines, return them
+                content = '\n'.join(filtered_lines)
+
+                # If we got substantial content, return it
+                if len(content) > 10:
+                    return content
+
+            # Fallback: Try span[dir="auto"] which often has the main text
+            span_elements = await element.query_selector_all('span[dir="auto"]')
+            for span in span_elements:
+                text = await span.inner_text()
+                if text and len(text) > 50:  # Likely main content if long enough
+                    # Make sure it's not just the username
+                    if author_username and text.lower() != author_username.lower():
+                        return text.strip()
+
+            # Last resort: return filtered lines even if short
             if filtered_lines:
                 return '\n'.join(filtered_lines)
 
-            # Last resort: return the full text
-            return full_text.strip()
-        except Exception:
+            return full_text.strip() if full_text else ""
+
+        except Exception as e:
+            logger.warning(f"Error extracting text: {e}")
             return ""
 
     @staticmethod

@@ -18,8 +18,8 @@ class ScraperConfig:
     output_dir: Path = field(default_factory=lambda: Path("output"))
     session_file: Path = field(default_factory=lambda: Path("session.json"))
     headless: bool = True
-    scroll_wait_time: int = 2
-    max_retries: int = 3
+    scroll_wait_time: int = 4  # Increased from 2 to load more content
+    max_retries: int = 10  # Increased from 3 to be more aggressive
     max_posts: Optional[int] = None
     log_level: str = "INFO"
 
