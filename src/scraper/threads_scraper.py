@@ -53,12 +53,16 @@ class ThreadsScraper:
         duplicate_count = 0
         new_count = 0
 
-        # Initialize deduplication manager
+        # Initialize deduplication manager (unless skip_dedup is enabled)
         dedup_manager = DeduplicationManager(self.config.output_dir)
-        existing_urls = dedup_manager.load_existing_posts(self.config.username)
+        existing_urls = set()
 
-        if existing_urls:
-            self.logger.info(f"Will skip {len(existing_urls)} already scraped posts")
+        if not self.config.skip_dedup:
+            existing_urls = dedup_manager.load_existing_posts(self.config.username)
+            if existing_urls:
+                self.logger.info(f"Will skip {len(existing_urls)} already scraped posts")
+        else:
+            self.logger.info("Force mode: Skipping duplicate checking")
 
         try:
             # 1. Launch browser
@@ -107,12 +111,18 @@ class ThreadsScraper:
             self.logger.info("Parsing reposts")
             all_reposts = await PostParser.parse_page_reposts(page)
 
-            # 8. Filter out duplicates
-            self.logger.info("Filtering duplicates")
-            new_reposts, duplicate_reposts = dedup_manager.filter_duplicates(all_reposts)
-            reposts = new_reposts
-            duplicate_count = len(duplicate_reposts)
-            new_count = len(new_reposts)
+            # 8. Filter out duplicates (unless skip_dedup is enabled)
+            if not self.config.skip_dedup:
+                self.logger.info("Filtering duplicates")
+                new_reposts, duplicate_reposts = dedup_manager.filter_duplicates(all_reposts)
+                reposts = new_reposts
+                duplicate_count = len(duplicate_reposts)
+                new_count = len(new_reposts)
+            else:
+                self.logger.info("Force mode: Using all posts without filtering")
+                reposts = all_reposts
+                duplicate_count = 0
+                new_count = len(all_reposts)
 
             # 9. Apply max_posts limit if specified (only to new posts)
             if self.config.max_posts and len(reposts) > self.config.max_posts:

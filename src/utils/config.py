@@ -22,6 +22,7 @@ class ScraperConfig:
     max_retries: int = 10  # Increased from 3 to be more aggressive
     max_posts: Optional[int] = None
     log_level: str = "INFO"
+    skip_dedup: bool = False  # Skip deduplication checking
 
     def __post_init__(self):
         """Validate and normalize configuration values."""

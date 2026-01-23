@@ -101,6 +101,12 @@ Examples:
     )
 
     parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Force scraping without checking for duplicates (skip deduplication)'
+    )
+
+    parser.add_argument(
         '--version',
         action='version',
         version='Threads Repost Scraper v1.0.0'
@@ -135,7 +141,8 @@ async def main_async():
             scroll_wait_time=args.wait_time,
             max_retries=args.max_retries,
             max_posts=args.max_posts,
-            log_level=args.log_level
+            log_level=args.log_level,
+            skip_dedup=args.force
         )
 
         logger.debug(f"Configuration: {config}")
@@ -149,6 +156,8 @@ async def main_async():
         print(f"Headless Mode: {config.headless}")
         if config.max_posts:
             print(f"Max Posts: {config.max_posts}")
+        if config.skip_dedup:
+            print(f"Force Mode: Enabled (skipping duplicate check)")
         print("="*60 + "\n")
 
         # Initialize scraper
