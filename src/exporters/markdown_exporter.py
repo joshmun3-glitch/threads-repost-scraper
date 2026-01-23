@@ -67,14 +67,14 @@ class MarkdownExporter:
 
     def _generate_filename(self, username: str, timestamp: str) -> str:
         """
-        Generate a filename for the markdown file.
+        Generate a unique filename for the markdown file.
 
         Args:
             username: Username being scraped
             timestamp: Timestamp string
 
         Returns:
-            Sanitized filename
+            Sanitized filename with timestamp
         """
         # Parse timestamp if it's a string
         if isinstance(timestamp, str):
@@ -85,8 +85,9 @@ class MarkdownExporter:
         else:
             dt = timestamp
 
-        date_str = dt.strftime("%Y%m%d")
-        base_name = f"threads_reposts_@{username}_{date_str}.md"
+        # Include date and time for unique filename each run
+        datetime_str = dt.strftime("%Y%m%d_%H%M%S")
+        base_name = f"threads_reposts_@{username}_{datetime_str}.md"
 
         return sanitize_filename(base_name)
 
