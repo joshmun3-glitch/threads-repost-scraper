@@ -35,6 +35,7 @@ class ScrollHandler:
         logger.info(f"Starting infinite scroll (wait_time={wait_time}s, max_retries={max_retries})")
 
         previous_height = 0
+        previous_post_count = 0
         no_change_count = 0
         scroll_count = 0
 
@@ -44,39 +45,46 @@ class ScrollHandler:
                 logger.info(f"Reached maximum scroll limit: {max_scrolls}")
                 break
 
-            # Get current scroll height
+            # Get current metrics BEFORE scrolling
             current_height = await page.evaluate("document.body.scrollHeight")
+            current_post_count = await page.evaluate("""
+                () => document.querySelectorAll('div[data-pressable-container="true"]').length
+            """)
 
             # Scroll to bottom
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             scroll_count += 1
 
-            logger.debug(f"Scroll #{scroll_count}: height={current_height}")
+            logger.info(f"Scroll #{scroll_count}: height={current_height}, posts={current_post_count}")
 
             # Wait for content to load
             await asyncio.sleep(wait_time)
 
-            # Get new height
+            # Get new metrics AFTER scrolling
             new_height = await page.evaluate("document.body.scrollHeight")
+            new_post_count = await page.evaluate("""
+                () => document.querySelectorAll('div[data-pressable-container="true"]').length
+            """)
 
-            # Also count visible post elements to better detect new content
-            try:
-                post_count = await page.evaluate("""
-                    () => document.querySelectorAll('div[data-pressable-container="true"]').length
-                """)
-                logger.debug(f"Visible posts: {post_count}")
-            except Exception:
-                pass
+            logger.info(f"After scroll: height={new_height}, posts={new_post_count}")
 
-            # Check if height changed
-            if new_height == current_height:
-                no_change_count += 1
-                logger.debug(f"No height change ({no_change_count}/{max_retries})")
-            else:
+            # Check if EITHER height or post count changed
+            height_changed = new_height > current_height
+            posts_increased = new_post_count > current_post_count
+
+            if height_changed or posts_increased:
+                # New content loaded
                 no_change_count = 0
                 previous_height = new_height
+                previous_post_count = new_post_count
+                if posts_increased:
+                    logger.info(f"✅ Loaded {new_post_count - current_post_count} new posts")
+            else:
+                # No new content
+                no_change_count += 1
+                logger.warning(f"⚠️  No new content ({no_change_count}/{max_retries})")
 
-        logger.info(f"Scrolling complete: {scroll_count} scrolls performed")
+        logger.info(f"Scrolling complete: {scroll_count} scrolls performed, {previous_post_count} total posts visible")
         return scroll_count
 
     @staticmethod
