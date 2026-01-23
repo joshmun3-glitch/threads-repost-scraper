@@ -41,11 +41,12 @@ class ThreadsSelectors:
         """Initialize selector lists with fallbacks."""
 
         # Post/Repost containers - try multiple selectors
+        # Note: Threads structure changes frequently, order matters!
         self.REPOST_ITEM = [
+            'div[data-pressable-container="true"]',  # Current working selector (2026-01)
             'article[role="presentation"]',
             'div[role="article"]',
             'article',
-            'div[data-pressable-container="true"]',
         ]
 
         self.POST_CONTAINER = [
